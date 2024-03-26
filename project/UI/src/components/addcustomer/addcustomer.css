@@ -1,0 +1,77 @@
+/* addcustomer.css */
+
+.addcustomer-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh; /* Adjust as needed */
+    background-color: #B39DC5; /* Violet background color */
+}
+
+.addcustomer-content {
+    background-color: #B39DC5; /* Grey background color for the content */
+    padding: 60px;
+    border-radius: 5px;
+    box-shadow: 0 0 10px #492F5D;
+    text-align: center;
+    max-width: 700px; /* Adjust as needed */
+    width: 100%;
+    font-size: 16px;
+    color: #492F5D;
+    font-family:Verdana, Geneva, Tahoma, sans-serif; /* Set the font family */
+    font-weight: bold; /* Font weight */
+}
+
+.input-group {
+    margin-bottom: 20px;
+    display: flex; /* Display input group as flex container */
+    align-items: center; /* Align items vertically */
+    font-weight: bold; /* Font weight */
+
+}
+
+.input-group label {
+    display: block;
+    margin-bottom: 5px;
+    width: 120px; /* Fixed width for labels */
+    margin-right: 10px; /* Add spacing between label and input box */
+    font-size: 16px; /* Font size */
+    color: #492F5D;
+    font-family:Verdana, Geneva, Tahoma, sans-serif; /* Set the font family */
+    font-weight: bold; /* Font weight */
+
+}
+
+.input-group input {
+    width: 100%;
+    flex: 1; /* Input box takes up remaining space */
+    padding: 8px;
+    box-sizing: border-box;
+    border: 1px solid #B39DC5;
+    border-radius: 4px;
+    outline: none;
+    font-family: Arial, sans-serif; /* Set the font family */
+    font-size: 18px; /* Font size */
+    font-weight: bold; /* Font weight */
+    background-color: #D9D9D9; /* New background color for input boxes */
+}
+
+.addcustomer-button {
+    display: flex;
+    align-items: center;
+    margin: 20px auto; /* Center the button */
+    justify-content: center;
+    padding: 10px 60px;
+    background-color: #492F5D; /* Button background color */
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    white-space: nowrap; /* Prevent text from wrapping */
+    font-weight: bold; /* Font weight */
+}
+
+.addcustomer-button:hover {
+    background-color: #B39DC5; /* Button background color on hover */
+}
