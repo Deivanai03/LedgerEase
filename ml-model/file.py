@@ -3,6 +3,13 @@ from flask_cors import CORS
 from azure.core.credentials import AzureKeyCredential
 from azure.ai.formrecognizer import DocumentAnalysisClient
 import os
+import uuid
+from datetime import datetime
+from pymongo import MongoClient
+from bson import Binary, ObjectId  # Import ObjectId
+import json  # Import json module
+from base64 import b64encode
+import pymongo
 
 app = Flask(__name__)
 CORS(app)
@@ -13,56 +20,123 @@ key = "2a0ff84cbcc541778b400af97dda7c4f"
 document_analysis_client = DocumentAnalysisClient(
     endpoint=endpoint, credential=AzureKeyCredential(key))
 
+# MongoDB setup
+mongo_client = MongoClient('mongodb://localhost:27017/')
+db = mongo_client['ledger-ease']
+collection = db['invoice']
+
 # Store the file temporarily
-UPLOAD_FOLDER = 'uploads'
+UPLOAD_FOLDER = '/home/deivanaiea/LedgerEase/ml-model/images'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+
+def generate_unique_filename(filename):
+    # Generate a unique filename using timestamp and uuid
+    timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+    unique_id = str(uuid.uuid4().hex)
+    _, extension = os.path.splitext(filename)
+    return f"{timestamp}_{unique_id}{extension}"
+
+
+def extract_invoice_data(invoice):
+    # Extract specific fields from the analyzed invoice
+    return {
+        "Invoice Number": invoice.fields.get("InvoiceId").value if invoice.fields.get("InvoiceId") else "Not found",
+        "Customer Name": invoice.fields.get("CustomerName").value if invoice.fields.get("CustomerName") else "Not found",
+        "Invoice Date": str(invoice.fields.get("InvoiceDate").value) if invoice.fields.get("InvoiceDate") else "Not found",
+        "Issue Date": str(invoice.fields.get("InvoiceDate").value) if invoice.fields.get("InvoiceDate") else "Not found",
+        "Total Amount": f"{invoice.fields.get('InvoiceTotal').value.amount} {invoice.fields.get('InvoiceTotal').value.code}" if invoice.fields.get("InvoiceTotal") else "Not found",
+        "Due Date": str(invoice.fields.get("DueDate").value) if invoice.fields.get("DueDate") else "Not found",
+    }
 
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
-    if 'file' not in request.files:
-        return make_response(jsonify({"error": "No file part"}), 400)
-    file = request.files['file']
-    if file.filename == '':
-        return make_response(jsonify({"error": "No selected file"}), 400)
-
-    # Save file
-    filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-    file.save(filepath)
-
     try:
+        if 'file' not in request.files:
+            return make_response(jsonify({"error": "No file part"}), 400)
+
+        file = request.files['file']
+        if file.filename == '':
+            return make_response(jsonify({"error": "No selected file"}), 400)
+
+        # Generate a unique filename
+        unique_filename = generate_unique_filename(file.filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+
+        # Print current working directory for debug
+        print("Current Working Directory:", os.getcwd())
+
+        # Save file
+        print("Saving file to:", filepath)  # Debug statement
+        file.save(filepath)
+
+        # Check if the file was saved successfully
+        if not os.path.exists(filepath):
+            return jsonify({"error": "Failed to save file"}), 500
+
+        # Perform document analysis
         with open(filepath, "rb") as f:
             poller = document_analysis_client.begin_analyze_document(
                 "prebuilt-invoice", f)
             invoices = poller.result()
 
-        # Extract specific fields from the analyzed invoice
-        results = []
-        for idx, invoice in enumerate(invoices.documents):
-            # Format and append each invoice's data
-            print("--------Recognizing invoice #{}--------".format(idx + 1))
-            invoice_dict = {
-                "Invoice Number": invoice.fields.get("InvoiceId").value if invoice.fields.get("InvoiceId") else "Not found",
-                "Customer Name": invoice.fields.get("CustomerName").value if invoice.fields.get("CustomerName") else "Not found",
-                "Invoice Date": str(invoice.fields.get("InvoiceDate").value) if invoice.fields.get("InvoiceDate") else "Not found",
-                "Issue Date": str(invoice.fields.get("InvoiceDate").value) if invoice.fields.get("InvoiceDate") else "Not found",
-                "Total Amount": f"{invoice.fields.get('InvoiceTotal').value.amount} {invoice.fields.get('InvoiceTotal').value.code}" if invoice.fields.get("InvoiceTotal") else "Not found",
-                "Due Date": str(invoice.fields.get("DueDate").value) if invoice.fields.get("DueDate") else "Not found",
-            }
-            results.append(invoice_dict)
-            print("invoice_dict", invoice_dict)
-            print("++++++++++++++++++++++++++++++++++++++++++++++")
+        # Extract data from invoices
+        results = [extract_invoice_data(invoice)
+                   for invoice in invoices.documents]
 
-        # Optionally, remove the file after processing
-        os.remove(filepath)
+        # Insert extracted data into MongoDB collection
+        for result in results:
+            with open(filepath, "rb") as f:
+                image_data = f.read()  # Read image data as bytes
+                image_base64 = b64encode(image_data).decode(
+                    'utf-8')  # Encode bytes to base64 string
+                image_data = {  # Create dictionary for image details
+                    'data': image_base64,
+                    'contentType': 'image/jpeg'
+                }
+                result['image'] = image_data  # Add image data to result
+            collection.insert_one(result)
 
-        return jsonify({"message": "File uploaded and processed successfully", "results": results})
+        # Print the result
+        print("Extracted Invoice Data:")
+        for idx, result in enumerate(results):
+            print(f"Invoice #{idx + 1}:")
+            for key, value in result.items():
+                print(f"{key}: {value}")
+
+        # Convert MongoDB documents to dictionaries without ObjectId
+        results_serializable = [json.loads(json.dumps(
+            result, default=str)) for result in results]
+
+        return jsonify({"message": "File uploaded and processed successfully", "results": results_serializable})
+
+    except FileNotFoundError:
+        return jsonify({"error": "File not found"}), 404
     except Exception as e:
-        # Optionally, remove the file in case of failure
-        os.remove(filepath)
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/invoices', methods=['GET'])
+def get_invoices():
+    try:
+        # Fetch invoices from MongoDB
+        invoices = collection.find({}, {"_id": 0})
+
+        invoices_list = [json.loads(json.dumps(invoice, default=str))
+                         for invoice in invoices]
+
+        # Debug print to check fetched invoices
+        fetched_invoices = invoices_list
+        print("Fetched Invoices:", fetched_invoices)
+
+        return jsonify(invoices_list)
+    except pymongo.errors.PyMongoError as e:
+        return jsonify({"error": f"MongoDB error: {str(e)}"}), 500
+    except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
 if __name__ == '__main__':
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, host='0.0.0.0', port=5002)
