@@ -1,7 +1,7 @@
 // src/components/Login.js
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import "./login.css";
+import "../signup/signup.css";
 import axios from "axios";
 
 const Login = () => {
@@ -24,16 +24,16 @@ const Login = () => {
     try {
       const response = await axios.post("/api/login", formData);
       localStorage.setItem("token", response.data.token);
-      navigate("/adduser");
+      navigate("/fileupload");
     } catch (error) {
       setError("Invalid email or password");
     }
   };
 
   return (
-    <div className="login-container">
-      <div className="login-card">
-        <h2 className="login-heading">Login</h2>
+    <div className="signup-container">
+      <div className="signup-card">
+        <h2 className="signup-heading">Login</h2>
         <div className="error">{error}</div>
         <div className="details-container">
           <div className="form-group">
