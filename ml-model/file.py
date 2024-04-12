@@ -15,8 +15,8 @@ app = Flask(__name__)
 CORS(app)
 
 # Azure Form Recognizer setup
-endpoint = "https://processing-invoice.cognitiveservices.azure.com/"
-key = "2a0ff84cbcc541778b400af97dda7c4f"
+endpoint = "https://team-5-invoice.cognitiveservices.azure.com/"
+key = "aaba86ed6f474bcd829d286684a31743"
 document_analysis_client = DocumentAnalysisClient(
     endpoint=endpoint, credential=AzureKeyCredential(key))
 

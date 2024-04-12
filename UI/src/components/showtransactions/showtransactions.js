@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
 import Header from "../header/header";
+import Modal from "../modal/modal";
 import "./showtransactions.css";
 
 const ShowTransactions = () => {
   const [invoices, setInvoices] = useState([]);
   const [selectedInvoice, setSelectedInvoice] = useState(null); // State to store selected invoice
+  const [isModalOpen, setIsModalOpen] = useState(false); // State to control modal visibility
 
   useEffect(() => {
     const fetchInvoices = async () => {
@@ -27,13 +29,18 @@ const ShowTransactions = () => {
   const handleViewDetails = (invoice) => {
     // Set the selected invoice when View Details button is clicked
     setSelectedInvoice(invoice);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false); // Close the modal
   };
 
   return (
     <div>
       <Header />
       <div className="transaction-details-container">
-        <h2 className="transaction-details-heading">Transaction Details</h2>
+        <h2 className="transaction-details-heading"></h2>
         <table className="transaction-table">
           <thead>
             <tr>
@@ -62,18 +69,11 @@ const ShowTransactions = () => {
             ))}
           </tbody>
         </table>
-        {/* Display selected invoice details, including image */}
-        {selectedInvoice && (
-          <div className="selected-invoice-details">
-            {selectedInvoice.image && (
-              <img
-                src={`data:image/jpeg;base64,${selectedInvoice.image.data}`}
-                alt="Invoice"
-              />
-            )}
-          </div>
-        )}
       </div>
+      {/* Render the modal only when isModalOpen is true */}
+      {isModalOpen && (
+        <Modal invoice={selectedInvoice} onClose={handleCloseModal} />
+      )}
     </div>
   );
 };
