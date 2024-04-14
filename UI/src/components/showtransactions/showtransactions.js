@@ -40,7 +40,6 @@ const ShowTransactions = () => {
     <div>
       <Header />
       <div className="transaction-details-container">
-        <h2 className="transaction-details-heading"></h2>
         <table className="transaction-table">
           <thead>
             <tr>
